@@ -18,11 +18,16 @@ for path_ in glob.glob(os.path.join(from_dir + "/*")):
     """親フォルダの読み込み"""
     for path in glob.glob(os.path.join(path_ + "/*.JPG")):
         """フォルダ内の画像の読み込み"""
+        # resize
         img = Image.open(path)
         img = img.resize((image_size, image_size))
+        # 子ファイルの取得
         folder = os.path.dirname(path)
         folds = folder[len(os.path.dirname(folder)):]
+        # ファイル名の取得
         basename = os.path.basename(path)
+
+        # save
         to_path = to_dir + folds
         os.makedirs(to_path, exist_ok=True)
         img.save(os.path.join(to_path, basename))
