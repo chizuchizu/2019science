@@ -144,5 +144,5 @@ if __name__ == '__main__':
                 base = to_dir + folds + "/" + str(i) + "_" + basename
                 # print(base)
                 # 比較用
-                cv2.imwrite(base, cv2.hconcat([img_src.astype(np.float64), img.astype(np.float64)]))
+                # cv2.imwrite(base, cv2.hconcat([img_src.astype(np.float64), img.astype(np.float64)]))
                 cv2.imwrite(base, img)

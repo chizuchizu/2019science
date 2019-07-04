@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/convnet-drawer" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/deeplearning_tool" vcs="Git" />
   </component>
 </project>
