@@ -1,8 +1,4 @@
-# 2019年自由研究用
+Image classification at school
+====
 
-## preprocessing(前処理)
-
-### リサイズ
-
-resize.pyにコードがある。  
-128x128の画像に整形するというものだ。  
+On the way
