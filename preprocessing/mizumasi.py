@@ -1,8 +1,4 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# usage: ./increase_picture.py hogehoge.jpg
-#
 import cv2
 import numpy as np
 

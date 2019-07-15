@@ -1,3 +1,3 @@
-from preprocessing.mizumasi import Inflated as Ifl
-from preprocessing.count import image_count
-from preprocessing.preprocess import Preprocess
+from .mizumasi import Inflated as Ifl
+from .count import image_count
+from .preprocess import Preprocess
