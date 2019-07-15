@@ -3,6 +3,7 @@ import os
 import glob
 from PIL import Image
 import numpy as np
+from tqdm import tqdm
 
 import preprocessing as pre
 from preprocessing import image_count
@@ -25,9 +26,10 @@ class Preprocess:
         self.target_name = target_name
 
         self.image_size = 128
+        self.bai = 18
         self.count = image_count(fd)
-        self.train = np.zeros((self.count, self.image_size, self.image_size, 3))
-        self.target = np.zeros(self.count)
+        self.train = np.zeros((self.count * self.bai, self.image_size, self.image_size, 3))
+        self.target = np.zeros(self.count * self.bai)
 
     def main(self):
         """
@@ -36,7 +38,7 @@ class Preprocess:
         """
         os.makedirs(self.to_dir, exist_ok=True)
         i = 0
-        for path_ in glob.glob(os.path.join(self.from_dir + "/*")):
+        for path_ in tqdm(glob.glob(os.path.join(self.from_dir + "/*"))):
             """親フォルダの読み込み"""
             for path in glob.glob(os.path.join(path_ + "/*.JPG")):
                 """フォルダ内の画像の読み込み"""
@@ -45,18 +47,22 @@ class Preprocess:
                 img = img.resize((self.image_size, self.image_size))
 
                 # 水増し
+                img = np.array(img)[:, :, ::-1]
+
                 img = pre.Ifl.inflated_main(pre.Ifl(), img)
 
                 # ndarrayに変換
                 img = np.array(img)
                 img = img[np.newaxis, ...]  # 4次元配列に変換
-                self.train[i, ...] = img.copy()
 
                 folder = os.path.dirname(path)
                 folds = folder[len(os.path.dirname(folder)) + 1:]
-                self.target[i] = folds
+                for j in range(self.bai):
+                    # print(img.shape)
+                    self.train[i, ...] = img[0, j, ...]
+                    self.target[i] = folds
 
-                i += 1
+                    i += 1
 
         print("Resize Done")
 
@@ -65,5 +71,5 @@ class Preprocess:
         画像データ(ndarray)とそのラベルを保存
         :return: None
         """
-        np.save(self.to_dir + self.train_name + ".npy", self.train)
-        np.save(self.to_dir + self.target_name + ".npy", self.target)
+        np.save(self.to_dir + "/" + self.train_name + ".npy", self.train)
+        np.save(self.to_dir + "/" + self.target_name + ".npy", self.target)

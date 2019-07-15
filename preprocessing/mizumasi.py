@@ -3,146 +3,107 @@
 #
 # usage: ./increase_picture.py hogehoge.jpg
 #
-
 import cv2
 import numpy as np
-import os
-import glob
 
 
-# ヒストグラム均一化
-def equalizeHistRGB(src):
-    RGB = cv2.split(src)
-    Blue = RGB[0]
-    Green = RGB[1]
-    Red = RGB[2]
-    for i in range(3):
-        cv2.equalizeHist(RGB[i])
+class Inflated:
+    def __init__(self):
+        # ルックアップテーブルの生成
+        self.min_table = 50
+        self.max_table = 205
+        self.diff_table = self.max_table - self.min_table
+        self.gamma1 = 0.75
+        self.gamma2 = 1.5
 
-    img_hist = cv2.merge([RGB[0], RGB[1], RGB[2]])
-    return img_hist
+        self.LUT_HC = np.arange(256, dtype='uint8')
+        self.LUT_LC = np.arange(256, dtype='uint8')
+        self.LUT_G1 = np.arange(256, dtype='uint8')
+        self.LUT_G2 = np.arange(256, dtype='uint8')
 
+        # 平滑化用
+        self.average_square = (10, 10)
 
-# ガウシアンノイズ
-def addGaussianNoise(src):
-    row, col, ch = src.shape
-    mean = 0
-    var = 0.1
-    sigma = 15
-    gauss = np.random.normal(mean, sigma, (row, col, ch))
-    gauss = gauss.reshape(row, col, ch)
-    noisy = src + gauss
+        # ハイコントラストLUT作成
+        for i in range(self.min_table):
+            self.LUT_HC[i] = 0
 
-    return noisy
+        for i in range(self.min_table, self.max_table):
+            self.LUT_HC[i] = 255 * (i - self.min_table) / self.diff_table
 
+        for i in range(self.max_table, 255):
+            self.LUT_HC[i] = 255
 
-# salt&pepperノイズ
-def addSaltPepperNoise(src):
-    row, col, ch = src.shape
-    s_vs_p = 0.5
-    amount = 0.004
-    out = src.copy()
-    # Salt mode
-    num_salt = np.ceil(amount * src.size * s_vs_p)
-    coords = [np.random.randint(0, i - 1, int(num_salt))
-              for i in src.shape]
-    out[coords[:-1]] = (255, 255, 255)
+        # その他LUT作成
+        for i in range(256):
+            self.LUT_LC[i] = self.min_table + i * self.diff_table / 255
+            self.LUT_G1[i] = 255 * pow(float(i) / 255, 1.0 / self.gamma1)
+            self.LUT_G2[i] = 255 * pow(float(i) / 255, 1.0 / self.gamma2)
 
-    # Pepper mode
-    num_pepper = np.ceil(amount * src.size * (1. - s_vs_p))
-    coords = [np.random.randint(0, i - 1, int(num_pepper))
-              for i in src.shape]
-    out[coords[:-1]] = (0, 0, 0)
-    return out
+        self.LUTs = [self.LUT_HC, self.LUT_LC, self.LUT_G1, self.LUT_G2]
 
+    def inflated_main(self, img):
+        trans_img = [img]
 
-if __name__ == '__main__':
-    # ルックアップテーブルの生成
-    min_table = 50
-    max_table = 205
-    diff_table = max_table - min_table
-    gamma1 = 0.75
-    gamma2 = 1.5
+        # LUT変換
+        for i, LUT in enumerate(self.LUTs):
+            trans_img.append(cv2.LUT(img, LUT))
 
-    LUT_HC = np.arange(256, dtype='uint8')
-    LUT_LC = np.arange(256, dtype='uint8')
-    LUT_G1 = np.arange(256, dtype='uint8')
-    LUT_G2 = np.arange(256, dtype='uint8')
+        # 平滑化
+        trans_img.append(cv2.blur(img, self.average_square))
 
-    LUTs = []
+        # ヒストグラム均一化
+        trans_img.append(self.equalizeHistRGB(img))
 
-    # 平滑化用
-    average_square = (10, 10)
+        # ノイズ付加
+        trans_img.append(self.addGaussianNoise(img))
+        trans_img.append(self.addSaltPepperNoise(img))
 
-    # ハイコントラストLUT作成
-    for i in range(0, min_table):
-        LUT_HC[i] = 0
+        # 反転
+        flip_img = [cv2.flip(x, 1) for x in trans_img]
+        trans_img.extend(flip_img)
 
-    for i in range(min_table, max_table):
-        LUT_HC[i] = 255 * (i - min_table) / diff_table
+        return trans_img
 
-    for i in range(max_table, 255):
-        LUT_HC[i] = 255
+    # ヒストグラム均一化
+    def equalizeHistRGB(self, src):
+        RGB = cv2.split(src)
+        Blue = RGB[0]
+        Green = RGB[1]
+        Red = RGB[2]
+        for i in range(3):
+            cv2.equalizeHist(RGB[i])
 
-    # その他LUT作成
-    for i in range(256):
-        LUT_LC[i] = min_table + i * diff_table / 255
-        LUT_G1[i] = 255 * pow(float(i) / 255, 1.0 / gamma1)
-        LUT_G2[i] = 255 * pow(float(i) / 255, 1.0 / gamma2)
+        img_hist = cv2.merge([RGB[0], RGB[1], RGB[2]])
+        return img_hist
 
-    LUTs.append(LUT_HC)
-    LUTs.append(LUT_LC)
-    LUTs.append(LUT_G1)
-    LUTs.append(LUT_G2)
+    # ガウシアンノイズ
+    def addGaussianNoise(self, src):
+        row, col, ch = src.shape
+        mean = 0
+        var = 0.1
+        sigma = 15
+        gauss = np.random.normal(mean, sigma, (row, col, ch))
+        gauss = gauss.reshape(row, col, ch)
+        noisy = src + gauss
 
-    # 画像の読み込み
-    from_dir = "/home/yuma/PycharmProjects/2019science/data/resize"
-    to_dir = "/home/yuma/PycharmProjects/2019science/data/trans_images"
-    for path_ in glob.glob(os.path.join(from_dir + "/*")):
-        """親フォルダの読み込み"""
-        for path in glob.glob(os.path.join(path_ + "/*.JPG")):
-            img_src = cv2.imread(path)
-            trans_img = []
-            trans_img.append(img_src)
+        return noisy
 
-            # LUT変換
-            for i, LUT in enumerate(LUTs):
-                trans_img.append(cv2.LUT(img_src, LUT))
+    # salt&pepperノイズ
+    def addSaltPepperNoise(self, src):
+        row, col, ch = src.shape
+        s_vs_p = 0.5
+        amount = 0.004
+        out = src.copy()
+        # Salt mode
+        num_salt = np.ceil(amount * src.size * s_vs_p)
+        coords = [np.random.randint(0, i - 1, int(num_salt))
+                  for i in src.shape]
+        out[coords[:-1]] = (255, 255, 255)
 
-            # 平滑化
-            trans_img.append(cv2.blur(img_src, average_square))
-
-            # ヒストグラム均一化
-            trans_img.append(equalizeHistRGB(img_src))
-
-            # ノイズ付加
-            trans_img.append(addGaussianNoise(img_src))
-            trans_img.append(addSaltPepperNoise(img_src))
-
-            # 反転
-            flip_img = []
-            for img in trans_img:
-                flip_img.append(cv2.flip(img, 1))
-            trans_img.extend(flip_img)
-
-            # 保存
-            if not os.path.exists("/home/yuma/PycharmProjects/2019science/data/trans_images"):
-                os.mkdir("/home/yuma/PycharmProjects/2019science/data/trans_images")
-
-            # base = os.path.splitext(os.path.basename(sys.argv[1]))[0] + "_"
-            img_src.astype(np.float64)
-
-            folder = os.path.dirname(path)
-            folds = folder[len(os.path.dirname(folder)):]
-            basename = os.path.basename(path)
-            # base = to_dir + folds + basename
-
-            if not os.path.exists(to_dir + folds):
-                os.mkdir(to_dir + folds)
-
-            for i, img in enumerate(trans_img):
-                base = to_dir + folds + "/" + str(i) + "_" + basename
-                # print(base)
-                # 比較用
-                # cv2.imwrite(base, cv2.hconcat([img_src.astype(np.float64), img.astype(np.float64)]))
-                cv2.imwrite(base, img)
+        # Pepper mode
+        num_pepper = np.ceil(amount * src.size * (1. - s_vs_p))
+        coords = [np.random.randint(0, i - 1, int(num_pepper))
+                  for i in src.shape]
+        out[coords[:-1]] = (0, 0, 0)
+        return out
