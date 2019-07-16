@@ -1,29 +1,31 @@
 # -*- coding: utf-8 -*-
 import os
 import glob
-from PIL import Image
 import numpy as np
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
+from PIL import Image
 
 import preprocessing as pre
 from preprocessing import image_count
 
 
 class Preprocess:
-    def __init__(self, fd, td, train_name="train_img", target_name="target_img"):
+    def __init__(self, fd, td, train_name="train_img", target_train_name="target_train_img", test_name="test_img",
+                 target_test_name="target_test_img"):
         """
         1.画像のリサイズ(128x128にする)
         2.画像の水増し(18倍)
         3.画像の保存
         :param fd: str, 元のパス
         :param td: str, 保存するパス
-        :param train_name: str, 画像データのファイル名
-        :param target_name: str, 画像データのラベルのファイル名
         """
         self.from_dir = fd
         self.to_dir = td
         self.train_name = train_name
-        self.target_name = target_name
+        self.target_train_name = target_train_name
+        self.test_name = test_name
+        self.target_test_name = target_test_name
 
         self.image_size = 128
         self.bai = 18
@@ -71,5 +73,8 @@ class Preprocess:
         画像データ(ndarray)とそのラベルを保存
         :return: None
         """
-        np.save(self.to_dir + "/" + self.train_name + ".npy", self.train)
-        np.save(self.to_dir + "/" + self.target_name + ".npy", self.target)
+        X_train, X_test, y_train, y_test = train_test_split(self.train, self.target, test_size=0.2, random_state=42)
+        np.save(self.to_dir + "/" + self.train_name + ".npy", X_train)
+        np.save(self.to_dir + "/" + self.target_train_name + ".npy", y_train)
+        np.save(self.to_dir + "/" + self.test_name + ".npy", X_test)
+        np.save(self.to_dir + "/" + self.target_test_name + ".npy", y_test)
